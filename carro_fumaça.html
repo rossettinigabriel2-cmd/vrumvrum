@@ -1,0 +1,154 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+#stage{width:100%;height:320px;background:linear-gradient(180deg,#87CEEB 0%,#b0e0ff 55%,#888 55%,#666 58%,#555 58%,#444 100%);position:relative;overflow:hidden;cursor:pointer}
+#sun{position:absolute;top:24px;right:60px;width:48px;height:48px;background:#FFE066;border-radius:50%}
+.cloud{position:absolute;background:#fff;border-radius:50px;opacity:0.85}
+#road-lines{position:absolute;bottom:68px;left:0;width:100%;height:6px;overflow:hidden}
+.rline{position:absolute;height:6px;width:48px;background:#FFE066;border-radius:3px;top:0}
+#car{position:absolute;bottom:72px;left:-220px;width:200px;height:80px}
+#smoke-container{position:absolute;bottom:108px;left:-240px;pointer-events:none}
+#msg{position:absolute;bottom:115px;left:-400px;font-family:'Arial Black',Arial,sans-serif;font-size:clamp(11px,2.2vw,17px);font-weight:900;color:#fff;text-shadow:0 0 8px #aaa,1px 1px 0 #666;white-space:nowrap;opacity:0;letter-spacing:1px}
+#hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-family:Arial,sans-serif;font-size:13px;color:#fff;background:rgba(0,0,0,0.3);padding:5px 14px;border-radius:20px;pointer-events:none}
+</style>
+
+<div id="stage">
+  <div id="sun"></div>
+  <div class="cloud" style="width:90px;height:30px;top:36px;left:18%"></div>
+  <div class="cloud" style="width:60px;height:22px;top:28px;left:22%;margin-top:4px"></div>
+  <div class="cloud" style="width:110px;height:32px;top:55px;left:55%"></div>
+  <div class="cloud" style="width:70px;height:24px;top:50px;left:60%"></div>
+  <div id="road-lines"></div>
+  <div id="car">
+    <svg viewBox="0 0 200 80" width="200" height="80" xmlns="http://www.w3.org/2000/svg">
+      <!-- corpo -->
+      <rect x="10" y="38" width="175" height="30" rx="6" fill="#e63946"/>
+      <!-- teto -->
+      <path d="M45 38 Q55 12 85 10 L130 10 Q158 12 165 38Z" fill="#c1121f"/>
+      <!-- janelas -->
+      <path d="M52 36 Q58 18 82 16 L110 16 Q118 18 122 36Z" fill="#90e0ef" opacity="0.9"/>
+      <path d="M125 36 Q128 18 140 16 L158 16 Q162 20 162 36Z" fill="#90e0ef" opacity="0.9"/>
+      <!-- farol frente -->
+      <ellipse cx="183" cy="48" rx="7" ry="5" fill="#FFE066"/>
+      <!-- farol traseiro -->
+      <rect x="8" y="44" width="10" height="8" rx="2" fill="#ff4444"/>
+      <!-- escapamento -->
+      <rect x="2" y="62" width="18" height="5" rx="2" fill="#888"/>
+      <!-- rodas -->
+      <circle cx="42" cy="68" r="14" fill="#222"/>
+      <circle cx="42" cy="68" r="7" fill="#555"/>
+      <circle cx="42" cy="68" r="3" fill="#aaa"/>
+      <circle cx="148" cy="68" r="14" fill="#222"/>
+      <circle cx="148" cy="68" r="7" fill="#555"/>
+      <circle cx="148" cy="68" r="3" fill="#aaa"/>
+      <!-- detalhe lateral -->
+      <rect x="10" y="52" width="165" height="3" rx="1" fill="#ff6b81" opacity="0.5"/>
+    </svg>
+  </div>
+  <div id="smoke-container"></div>
+  <div id="msg">Vrum vrum..... manda foto do seu bumbum 🍑</div>
+  <div id="hint">Clique para o carro passar</div>
+</div>
+
+<script>
+const stage=document.getElementById('stage');
+const car=document.getElementById('car');
+const smokeC=document.getElementById('smoke-container');
+const msg=document.getElementById('msg');
+const hint=document.getElementById('hint');
+const roadLines=document.getElementById('road-lines');
+let running=false, animFrame=null, smokeInter=null;
+
+for(let i=0;i<8;i++){
+  const l=document.createElement('div');
+  l.className='rline';
+  l.style.left=(i*130)+'px';
+  roadLines.appendChild(l);
+}
+const rlines=Array.from(roadLines.querySelectorAll('.rline'));
+let rpos=rlines.map((_,i)=>i*130);
+
+function makeSmoke(x,y){
+  const s=document.createElement('div');
+  const size=18+Math.random()*22;
+  s.style.cssText=`position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(200,200,200,0.55);left:${x}px;top:${y}px;pointer-events:none;transition:none`;
+  smokeC.appendChild(s);
+  let op=0.55, sx=x, sy=y, sc=1;
+  const drift=()=>{
+    sx-=0.6; sy-=0.5; sc+=0.015; op-=0.012;
+    s.style.left=sx+'px'; s.style.top=sy+'px';
+    s.style.transform=`scale(${sc})`;
+    s.style.opacity=op;
+    if(op>0) requestAnimationFrame(drift); else s.remove();
+  };
+  requestAnimationFrame(drift);
+}
+
+function go(){
+  if(running)return;
+  running=true;
+  hint.style.opacity='0';
+  msg.style.opacity='0';
+  msg.style.left='-400px';
+  smokeC.innerHTML='';
+
+  let carX=-220, speed=0, frame=0, msgShown=false;
+  const stageW=stage.offsetWidth;
+
+  smokeInter=setInterval(()=>{
+    if(!running)return;
+    const rect=car.getBoundingClientRect();
+    const stRect=stage.getBoundingClientRect();
+    const relX=carX-30;
+    const relY=10;
+    makeSmoke(relX, relY);
+  },80);
+
+  function step(){
+    frame++;
+    speed=Math.min(speed+0.4, 7);
+    carX+=speed;
+    car.style.left=carX+'px';
+    smokeC.style.left=carX+'px';
+
+    rpos=rpos.map(p=>{
+      let np=p-speed*0.8;
+      if(np<-60) np+=roadLines.offsetWidth+60;
+      return np;
+    });
+    rlines.forEach((l,i)=>l.style.left=rpos[i]+'px');
+
+    // quando carro chega no meio, mostra mensagem na fumaça
+    if(carX>stageW*0.25 && !msgShown){
+      msgShown=true;
+      msg.style.left=(carX-180)+'px';
+      msg.style.bottom='118px';
+      msg.style.opacity='0';
+      // digita a mensagem
+      const txt='Vrum vrum..... manda foto do seu bumbum 🍑';
+      msg.textContent='';
+      msg.style.opacity='1';
+      let ci=0;
+      const typer=setInterval(()=>{
+        msg.textContent+=txt[ci]; ci++;
+        if(ci>=txt.length) clearInterval(typer);
+      },45);
+    }
+
+    if(carX>stageW+220){
+      clearInterval(smokeInter);
+      cancelAnimationFrame(animFrame);
+      running=false;
+      setTimeout(()=>{
+        hint.style.opacity='1';
+        hint.textContent='Clique para ver de novo';
+      },600);
+      return;
+    }
+    animFrame=requestAnimationFrame(step);
+  }
+  animFrame=requestAnimationFrame(step);
+}
+
+stage.addEventListener('click', go);
+</script>
